@@ -1,98 +1,141 @@
 /**
- * 动画时序常量
- * 精细的时序控制，实现流体动画系统
+ * Animation System
+ * Cursor-like animation constants and variants
  */
 
+// Timing constants (in milliseconds)
 export const ANIMATION_TIMING = {
-  // 状态转换
-  headerHide: 200,
-  headerShow: 250,
-  shortcutsHide: 180,
-  shortcutsShow: 220,
-
-  // 消息动画
+  // Layout transitions
+  sidebarToggle: 250,
+  modeSwitch: 200,
+  viewTransition: 200,
+  
+  // Content animations
   messageEnter: 300,
   messageStagger: 50,
-  typingCursor: 530,
-
-  // 微交互
+  conversationSwitch: 150,
+  
+  // Micro-interactions
   buttonHover: 150,
   buttonTap: 100,
   statusPulse: 2000,
-
-  // Spring 配置
+  
+  // Spring configs
   spring: {
     stiff: { stiffness: 500, damping: 45 },
-    gentle: { stiffness: 35, restDelta: 2 },
+    gentle: { stiffness: 120, damping: 20 },
     bounce: { type: 'spring' as const, stiffness: 300, damping: 20 },
+    snappy: { type: 'spring' as const, stiffness: 400, damping: 30 },
   },
 } as const
 
 /**
- * Framer Motion 动画变体
+ * Framer Motion animation variants
  */
 export const variants = {
-  // Header 动画
+  // Sidebar animations
+  sidebar: {
+    initial: { width: 0, opacity: 0 },
+    animate: { width: 260, opacity: 1 },
+    exit: { width: 0, opacity: 0 },
+  },
+
+  // Header animations
   header: {
     initial: { opacity: 0, y: -20 },
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: -10 },
   },
 
-  // 消息入场
+  // Message entry
   message: {
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -10 },
+    initial: { opacity: 0, y: 20, scale: 0.98 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    exit: { opacity: 0, y: -10, scale: 0.98 },
   },
 
-  // 设置面板滑入
+  // Conversation item
+  conversationItem: {
+    initial: { opacity: 0, x: -10 },
+    animate: { opacity: 1, x: 0 },
+    exit: { opacity: 0, height: 0, marginTop: 0, marginBottom: 0 },
+  },
+
+  // Settings panel slide
   settingsPanel: {
     initial: { x: '100%' },
     animate: { x: 0 },
     exit: { x: '100%' },
   },
 
-  // 快捷操作栏
+  // Quick action bar
   shortcuts: {
     initial: { opacity: 0, y: 10 },
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: 10 },
   },
 
-  // 淡入淡出
+  // Fade
   fade: {
     initial: { opacity: 0 },
     animate: { opacity: 1 },
     exit: { opacity: 0 },
   },
 
-  // 缩放
+  // Scale
   scale: {
-    initial: { opacity: 0, scale: 0.9 },
+    initial: { opacity: 0, scale: 0.95 },
     animate: { opacity: 1, scale: 1 },
-    exit: { opacity: 0, scale: 0.9 },
+    exit: { opacity: 0, scale: 0.95 },
+  },
+
+  // Slide up
+  slideUp: {
+    initial: { opacity: 0, y: 20 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: 20 },
+  },
+
+  // Slide in from left
+  slideInLeft: {
+    initial: { opacity: 0, x: -20 },
+    animate: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: -20 },
+  },
+
+  // Action plan item
+  actionPlanItem: {
+    initial: { opacity: 0, y: 10 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -10, height: 0 },
+  },
+
+  // Mode switch indicator
+  modeIndicator: {
+    initial: false,
+    animate: { opacity: 1 },
+    transition: { type: 'spring', stiffness: 500, damping: 35 },
   },
 } as const
 
 /**
- * 交错动画容器
+ * Stagger container for list animations
  */
 export const staggerContainer = {
   animate: {
     transition: {
       staggerChildren: ANIMATION_TIMING.messageStagger / 1000,
-      delayChildren: 0.1,
+      delayChildren: 0.05,
     },
   },
 } as const
 
 /**
- * 呼吸动画
+ * Pulse animation for status indicators
  */
 export const pulseAnimation = {
   animate: {
-    opacity: [0.7, 1, 0.7] as number[],
+    opacity: [0.5, 1, 0.5] as number[],
     transition: {
       duration: ANIMATION_TIMING.statusPulse / 1000,
       repeat: Infinity,
@@ -102,7 +145,7 @@ export const pulseAnimation = {
 }
 
 /**
- * Logo 微动画
+ * Logo breathing animation
  */
 export const logoAnimation = {
   animate: {
@@ -114,3 +157,45 @@ export const logoAnimation = {
     },
   },
 }
+
+/**
+ * Typing cursor blink
+ */
+export const cursorBlink = {
+  animate: {
+    opacity: [1, 0, 1] as number[],
+    transition: {
+      duration: 1,
+      repeat: Infinity,
+      ease: 'steps(1)',
+    },
+  },
+}
+
+/**
+ * Button hover scale
+ */
+export const buttonHover = {
+  whileHover: { scale: 1.02 },
+  whileTap: { scale: 0.98 },
+  transition: { duration: ANIMATION_TIMING.buttonHover / 1000 },
+}
+
+/**
+ * Icon button hover
+ */
+export const iconButtonHover = {
+  whileHover: { scale: 1.05 },
+  whileTap: { scale: 0.95 },
+}
+
+/**
+ * Transition presets
+ */
+export const transitions = {
+  fast: { duration: 0.15, ease: 'easeOut' },
+  normal: { duration: 0.2, ease: 'easeOut' },
+  slow: { duration: 0.3, ease: 'easeOut' },
+  spring: { type: 'spring', stiffness: 400, damping: 30 },
+  springGentle: { type: 'spring', stiffness: 120, damping: 20 },
+} as const

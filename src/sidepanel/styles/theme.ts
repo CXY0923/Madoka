@@ -1,89 +1,83 @@
 /**
- * 主题色彩常量
- * 极简黑白灰配色，让信息本身成为焦点
+ * Theme System
+ * Cursor-style theme management with dark/light mode support
  */
 
-export const COLORS = {
-  // 背景
-  bgPrimary: '#fafafa',
-  bgSecondary: '#ffffff',
-  bgTertiary: '#f5f5f5',
+export type Theme = 'light' | 'dark'
 
-  // 文字
-  textPrimary: '#000000',
-  textSecondary: '#666666',
-  textMuted: '#999999',
-
-  // 交互
-  buttonPrimary: '#000000',
-  buttonSecondary: '#333333',
-  buttonHover: '#1a1a1a',
-  buttonDisabled: '#cccccc',
-
-  // 边框
-  border: '#e5e5e5',
-  borderLight: '#f0f0f0',
-
-  // 状态
-  success: '#22c55e',
-  error: '#ef4444',
-  warning: '#f59e0b',
-
-  // 消息
-  userMessage: '#000000',
-  assistantMessage: '#ffffff',
-
-  // 阴影
-  shadow: {
-    sm: '0 2px 8px rgba(0, 0, 0, 0.04)',
-    md: '0 4px 16px rgba(0, 0, 0, 0.08)',
-    lg: '0 8px 28px rgba(0, 0, 0, 0.12)',
+// Theme colors - referenced from CSS variables
+export const THEME_COLORS = {
+  light: {
+    bgPrimary: '#ffffff',
+    bgSecondary: '#f8f9fa',
+    bgTertiary: '#f0f1f3',
+    bgHover: '#e8e9eb',
+    bgActive: '#dcdee0',
+    bgSidebar: '#f3f4f6',
+    textPrimary: '#1a1a1a',
+    textSecondary: '#4b5563',
+    textMuted: '#9ca3af',
+    borderPrimary: '#e5e7eb',
+    borderSecondary: '#d1d5db',
+    accentPrimary: '#3b82f6',
+  },
+  dark: {
+    bgPrimary: '#1e1e1e',
+    bgSecondary: '#252526',
+    bgTertiary: '#2d2d2d',
+    bgHover: '#3c3c3c',
+    bgActive: '#4a4a4a',
+    bgSidebar: '#181818',
+    textPrimary: '#cccccc',
+    textSecondary: '#9ca3af',
+    textMuted: '#6b7280',
+    borderPrimary: '#3c3c3c',
+    borderSecondary: '#4a4a4a',
+    accentPrimary: '#3b82f6',
   },
 } as const
 
 /**
- * 字体配置
+ * Get the current theme from the document
  */
-export const FONTS = {
-  family: {
-    sans: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif",
-    mono: "'Menlo', 'Monaco', 'Courier New', monospace",
-  },
-  size: {
-    xs: '11px',
-    sm: '12px',
-    base: '13px',
-    lg: '14px',
-    xl: '16px',
-    '2xl': '18px',
-  },
-  weight: {
-    normal: 400,
-    medium: 500,
-    semibold: 600,
-    bold: 700,
-  },
-} as const
+export function getCurrentTheme(): Theme {
+  return (document.documentElement.dataset.theme as Theme) || 'light'
+}
 
 /**
- * 间距配置
+ * Set the theme on the document
  */
-export const SPACING = {
-  xs: '4px',
-  sm: '8px',
-  md: '12px',
-  lg: '16px',
-  xl: '20px',
-  '2xl': '24px',
-} as const
+export function setTheme(theme: Theme): void {
+  document.documentElement.dataset.theme = theme
+  // Persist to storage
+  chrome.storage.local.set({ theme })
+}
 
 /**
- * 圆角配置
+ * Toggle between light and dark themes
  */
-export const RADIUS = {
-  sm: '4px',
-  md: '8px',
-  lg: '12px',
-  xl: '16px',
-  full: '9999px',
-} as const
+export function toggleTheme(): Theme {
+  const current = getCurrentTheme()
+  const next = current === 'light' ? 'dark' : 'light'
+  setTheme(next)
+  return next
+}
+
+/**
+ * Initialize theme from storage
+ */
+export async function initializeTheme(): Promise<Theme> {
+  try {
+    const result = await chrome.storage.local.get('theme')
+    const theme = (result.theme as Theme) || 'light'
+    setTheme(theme)
+    return theme
+  } catch {
+    setTheme('light')
+    return 'light'
+  }
+}
+
+/**
+ * React hook for theme management is in useTheme.ts
+ */

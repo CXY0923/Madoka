@@ -1,6 +1,6 @@
 /**
- * InputArea 组件
- * 输入区域 - 输入框和发送按钮
+ * InputArea Component
+ * Message input with quick actions
  */
 
 import { useState, useRef, useEffect, KeyboardEvent } from 'react'
@@ -15,9 +15,9 @@ export function InputArea() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { sendMessage, isResponding, searchStatus } = useChat()
   const { readPage, reading } = usePageReader()
-  const { state } = useChatContext()
+  const { pageContent, mode } = useChatContext()
 
-  // 自动调整高度
+  // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
@@ -41,100 +41,76 @@ export function InputArea() {
     }
   }
 
-  const handleShortcut = (action: 'search' | 'read' | 'summary') => {
-    if (action === 'search') {
-      setInput('/search ')
-      textareaRef.current?.focus()
-    } else if (action === 'read') {
-      readPage()
-    } else if (action === 'summary') {
-      readPage().then((result) => {
-        if (result) {
-          setInput('请总结这个页面的主要内容')
-          setTimeout(() => handleSend(), 100)
-        }
-      })
-    }
-  }
-
   return (
-    <div className="border-t border-madoka-border bg-white">
-      {/* 搜索状态 */}
+    <div className="border-t border-[var(--border-primary)] bg-[var(--bg-secondary)]">
+      {/* Search/Status indicator */}
       <AnimatePresence>
         {searchStatus && (
           <motion.div
-            className="px-4 py-2 text-xs text-madoka-text-secondary bg-madoka-bg-tertiary flex items-center gap-2"
+            className="px-4 py-2 text-xs text-[var(--text-secondary)] bg-[var(--bg-tertiary)] flex items-center gap-2"
             variants={variants.fade}
             initial="initial"
             animate="animate"
             exit="exit"
           >
-            <div className="w-3 h-3 border-2 border-madoka-text border-t-transparent rounded-full animate-spin" />
+            <span className="w-3 h-3 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin" />
             <span>{searchStatus}</span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* 快捷操作 */}
+      {/* Quick actions (only in chat mode) */}
       <AnimatePresence>
-        {!isResponding && (
+        {!isResponding && mode === 'chat' && (
           <motion.div
-            className="flex gap-2 px-4 py-2 border-b border-madoka-border-light"
+            className="flex gap-2 px-4 py-2 border-b border-[var(--border-primary)]"
             variants={variants.shortcuts}
             initial="initial"
             animate="animate"
             exit="exit"
           >
-            <motion.button
-              className="px-3 py-1.5 text-xs font-medium bg-madoka-bg-tertiary rounded-full hover:bg-madoka-border transition-colors"
-              onClick={() => handleShortcut('search')}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              🔍 搜索
-            </motion.button>
-            <motion.button
-              className="px-3 py-1.5 text-xs font-medium bg-madoka-bg-tertiary rounded-full hover:bg-madoka-border transition-colors disabled:opacity-50"
-              onClick={() => handleShortcut('read')}
+            <QuickAction
+              icon={<SearchIcon />}
+              label="Search"
+              onClick={() => {
+                setInput('/search ')
+                textareaRef.current?.focus()
+              }}
+            />
+            <QuickAction
+              icon={<PageIcon />}
+              label="Read Page"
+              onClick={readPage}
               disabled={reading}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              📖 阅读页面
-            </motion.button>
-            <motion.button
-              className="px-3 py-1.5 text-xs font-medium bg-madoka-bg-tertiary rounded-full hover:bg-madoka-border transition-colors disabled:opacity-50"
-              onClick={() => handleShortcut('summary')}
-              disabled={reading}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              📝 总结
-            </motion.button>
+            />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* 已附加页面提示 */}
-      {state.pageContent && (
-        <div className="px-4 py-2 text-xs text-madoka-text-secondary bg-madoka-bg-tertiary border-b border-madoka-border-light flex items-center gap-2">
-          <span>📎</span>
-          <span className="truncate flex-1">{state.pageContent.title}</span>
+      {/* Attached page indicator */}
+      {pageContent && (
+        <div className="px-4 py-2 text-xs text-[var(--text-secondary)] bg-[var(--bg-tertiary)] border-b border-[var(--border-primary)] flex items-center gap-2">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+          </svg>
+          <span className="truncate flex-1">{pageContent.title}</span>
           <button
-            className="text-madoka-muted hover:text-madoka-text"
+            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
             onClick={() => useChatContext().dispatch({ type: 'SET_PAGE_CONTENT', payload: null })}
           >
-            ✕
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
       )}
 
-      {/* 输入框 */}
+      {/* Input area */}
       <div className="flex items-end gap-2 p-3">
         <textarea
           ref={textareaRef}
-          className="flex-1 resize-none bg-madoka-bg-tertiary rounded-xl px-4 py-2.5 text-sm outline-none placeholder:text-madoka-muted focus:ring-1 focus:ring-madoka-border transition-all disabled:opacity-50"
-          placeholder={state.pageContent ? '基于页面内容提问...' : '输入问题...'}
+          className="flex-1 resize-none bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-xl px-4 py-2.5 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--border-focus)] focus:ring-1 focus:ring-[var(--border-focus)] transition-all disabled:opacity-50"
+          placeholder={pageContent ? 'Ask about this page...' : 'Type a message...'}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -142,7 +118,7 @@ export function InputArea() {
           disabled={isResponding}
         />
         <motion.button
-          className="p-2.5 bg-black text-white rounded-xl disabled:opacity-30 disabled:cursor-not-allowed"
+          className="p-2.5 bg-[var(--accent-primary)] text-white rounded-xl disabled:opacity-30 disabled:cursor-not-allowed"
           onClick={handleSend}
           disabled={!input.trim() || isResponding}
           whileHover={{ scale: 1.05 }}
@@ -154,5 +130,48 @@ export function InputArea() {
         </motion.button>
       </div>
     </div>
+  )
+}
+
+// Quick action button
+function QuickAction({
+  icon,
+  label,
+  onClick,
+  disabled = false,
+}: {
+  icon: React.ReactNode
+  label: string
+  onClick: () => void
+  disabled?: boolean
+}) {
+  return (
+    <motion.button
+      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] bg-[var(--bg-tertiary)] rounded-full hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors disabled:opacity-50"
+      onClick={onClick}
+      disabled={disabled}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+    >
+      {icon}
+      {label}
+    </motion.button>
+  )
+}
+
+// Icons
+function SearchIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+  )
+}
+
+function PageIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
   )
 }

@@ -1,21 +1,63 @@
 /**
  * Madoka Background Service Worker
- * 处理搜索、内容读取和 API 调用
+ * Handles search, content reading, API calls, and Action Space operations
  */
 
 import type { SearchEngine, SearchContext } from '../shared/types'
+import type { ActionParams, ActionSpace, ActionResult } from '../shared/action-types'
+import type { AnyContextRef } from '../shared/context-types'
 import { getConfig, saveConfig } from './config'
 import { searchAndRead } from './search'
-import { handleChat, callTongyiAPI, shouldSearch } from './api'
+import { handleChat, callTongyiAPI, analyzeSearchNeed, extractSearchKeywords } from './api'
+import {
+  getAllTabs,
+  searchTabs,
+  searchBookmarks,
+  getHistory,
+  getCurrentPage,
+  resolveContextContent,
+  searchAllContexts,
+} from './context'
 
 /**
- * 消息处理器
+ * Get the current active tab
+ */
+async function getActiveTab(): Promise<chrome.tabs.Tab | null> {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  return tab || null
+}
+
+/**
+ * Send message to Content Script
+ */
+async function sendToContentScript<T>(
+  tabId: number,
+  message: Record<string, unknown>
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.sendMessage(tabId, message, (response) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message))
+      } else {
+        resolve(response as T)
+      }
+    })
+  })
+}
+
+/**
+ * Message handler
  */
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('[Madoka BG] 收到消息:', request.action)
+  console.log('[Madoka BG] Received message:', request.action)
 
   if (request.action === 'chat') {
     handleChatRequest(request, sender)
+    return true
+  }
+
+  if (request.action === 'smartChat') {
+    handleSmartChatRequest(request, sender)
     return true
   }
 
@@ -36,65 +78,343 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true
   }
 
+  if (request.action === 'readPage') {
+    handleReadPageRequest(request, sendResponse)
+    return true
+  }
+
+  // ============ Action Space Messages ============
+
+  if (request.action === 'extractActionSpace') {
+    ;(async () => {
+      try {
+        const tabId = request.tabId || (await getActiveTab())?.id
+        if (!tabId) {
+          sendResponse({ success: false, error: 'No active tab found' })
+          return
+        }
+
+        const response = await sendToContentScript<{
+          success: boolean
+          actionSpace?: ActionSpace
+          error?: string
+        }>(tabId, { action: 'extractActionSpace' })
+
+        sendResponse(response)
+      } catch (e) {
+        console.error('[Madoka BG] Failed to extract Action Space:', e)
+        sendResponse({ success: false, error: (e as Error).message })
+      }
+    })()
+    return true
+  }
+
+  if (request.action === 'executeAction') {
+    ;(async () => {
+      try {
+        const tabId = request.tabId || (await getActiveTab())?.id
+        if (!tabId) {
+          sendResponse({ success: false, error: 'No active tab found' })
+          return
+        }
+
+        const response = await sendToContentScript<{
+          success: boolean
+          result?: ActionResult
+          error?: string
+        }>(tabId, {
+          action: 'executeAction',
+          actionId: request.actionId,
+          params: request.params as ActionParams,
+        })
+
+        sendResponse(response)
+      } catch (e) {
+        console.error('[Madoka BG] Failed to execute Action:', e)
+        sendResponse({ success: false, error: (e as Error).message })
+      }
+    })()
+    return true
+  }
+
+  if (request.action === 'highlightAction') {
+    ;(async () => {
+      try {
+        const tabId = request.tabId || (await getActiveTab())?.id
+        if (!tabId) {
+          sendResponse({ success: false, error: 'No active tab found' })
+          return
+        }
+
+        const response = await sendToContentScript<{ success: boolean; error?: string }>(tabId, {
+          action: 'highlightAction',
+          actionId: request.actionId,
+          highlight: request.highlight,
+          status: request.status,
+        })
+
+        sendResponse(response)
+      } catch (e) {
+        sendResponse({ success: false, error: (e as Error).message })
+      }
+    })()
+    return true
+  }
+
+  if (request.action === 'clearHighlights') {
+    ;(async () => {
+      try {
+        const tabId = request.tabId || (await getActiveTab())?.id
+        if (!tabId) {
+          sendResponse({ success: false, error: 'No active tab found' })
+          return
+        }
+
+        const response = await sendToContentScript<{ success: boolean; error?: string }>(tabId, {
+          action: 'clearHighlights',
+        })
+
+        sendResponse(response)
+      } catch (e) {
+        sendResponse({ success: false, error: (e as Error).message })
+      }
+    })()
+    return true
+  }
+
+  if (request.action === 'validateAction') {
+    ;(async () => {
+      try {
+        const tabId = request.tabId || (await getActiveTab())?.id
+        if (!tabId) {
+          sendResponse({ success: false, error: 'No active tab found' })
+          return
+        }
+
+        const response = await sendToContentScript<{
+          success: boolean
+          valid?: boolean
+          reason?: string
+          error?: string
+        }>(tabId, {
+          action: 'validateAction',
+          actionId: request.actionId,
+        })
+
+        sendResponse(response)
+      } catch (e) {
+        sendResponse({ success: false, error: (e as Error).message })
+      }
+    })()
+    return true
+  }
+
+  if (request.action === 'clearActionIds') {
+    ;(async () => {
+      try {
+        const tabId = request.tabId || (await getActiveTab())?.id
+        if (!tabId) {
+          sendResponse({ success: false, error: 'No active tab found' })
+          return
+        }
+
+        const response = await sendToContentScript<{ success: boolean; error?: string }>(tabId, {
+          action: 'clearActionIds',
+        })
+
+        sendResponse(response)
+      } catch (e) {
+        sendResponse({ success: false, error: (e as Error).message })
+      }
+    })()
+    return true
+  }
+
+  // ============ Context Reference Messages ============
+
+  if (request.action === 'getTabs') {
+    ;(async () => {
+      try {
+        const query = request.query || ''
+        const tabs = query ? await searchTabs(query) : await getAllTabs()
+        sendResponse({ success: true, data: tabs })
+      } catch (e) {
+        sendResponse({ success: false, error: (e as Error).message })
+      }
+    })()
+    return true
+  }
+
+  if (request.action === 'getBookmarks') {
+    ;(async () => {
+      try {
+        const bookmarks = await searchBookmarks(request.query || '')
+        sendResponse({ success: true, data: bookmarks })
+      } catch (e) {
+        sendResponse({ success: false, error: (e as Error).message })
+      }
+    })()
+    return true
+  }
+
+  if (request.action === 'getHistory') {
+    ;(async () => {
+      try {
+        const history = await getHistory(request.query || '', request.maxResults || 20)
+        sendResponse({ success: true, data: history })
+      } catch (e) {
+        sendResponse({ success: false, error: (e as Error).message })
+      }
+    })()
+    return true
+  }
+
+  if (request.action === 'getCurrentPage') {
+    ;(async () => {
+      try {
+        const page = await getCurrentPage()
+        sendResponse({ success: true, data: page })
+      } catch (e) {
+        sendResponse({ success: false, error: (e as Error).message })
+      }
+    })()
+    return true
+  }
+
+  if (request.action === 'searchAllContexts') {
+    ;(async () => {
+      try {
+        const results = await searchAllContexts(request.query || '')
+        sendResponse({ success: true, data: results })
+      } catch (e) {
+        sendResponse({ success: false, error: (e as Error).message })
+      }
+    })()
+    return true
+  }
+
+  if (request.action === 'resolveContext') {
+    ;(async () => {
+      try {
+        const ref = request.ref as AnyContextRef
+        const content = await resolveContextContent(ref)
+        sendResponse({ success: true, data: content })
+      } catch (e) {
+        sendResponse({ success: false, error: (e as Error).message })
+      }
+    })()
+    return true
+  }
+
   return false
 })
 
 /**
- * 处理聊天请求
+ * Handle read page request
  */
-async function handleChatRequest(
+async function handleReadPageRequest(
+  request: { tabId?: number },
+  sendResponse: (response: unknown) => void
+) {
+  try {
+    const tabId = request.tabId || (await getActiveTab())?.id
+    if (!tabId) {
+      sendResponse({ success: false, error: 'No active tab found' })
+      return
+    }
+
+    const response = await sendToContentScript<{
+      success: boolean
+      content?: string
+      title?: string
+      url?: string
+      length?: number
+      error?: string
+    }>(tabId, { action: 'readPage' })
+
+    sendResponse(response)
+  } catch (e) {
+    sendResponse({ success: false, error: (e as Error).message })
+  }
+}
+
+/**
+ * Handle smart chat request with AI-based search decision
+ */
+async function handleSmartChatRequest(
   request: {
     message: string
     history?: { role: string; content: string }[]
-    forceSearch?: boolean
     engine?: SearchEngine
     pageContent?: string
     tabId?: number
+    autoReadPage?: boolean
   },
   sender: chrome.runtime.MessageSender
 ) {
+  const tabId = sender.tab?.id || request.tabId
+  const isFromSidePanel = !sender.tab
+
+  const sendToUI = (message: Record<string, unknown>) => {
+    if (isFromSidePanel) {
+      chrome.runtime.sendMessage(message).catch(() => {})
+    } else if (tabId) {
+      chrome.tabs.sendMessage(tabId, message).catch(() => {})
+    }
+  }
+
   try {
+    let pageContent = request.pageContent || null
     let searchContext: SearchContext | null = null
-    let query = request.message
-    const pageContent = request.pageContent || null
 
-    const tabId = sender.tab?.id || request.tabId
-    const isFromSidePanel = !sender.tab
+    console.log('[Madoka BG] Smart chat request:', {
+      message: request.message,
+      hasPageContent: !!pageContent,
+      autoReadPage: request.autoReadPage,
+    })
 
-    const sendToUI = (message: Record<string, unknown>) => {
-      if (isFromSidePanel) {
-        chrome.runtime.sendMessage(message).catch(() => {})
-      } else if (tabId) {
-        chrome.tabs.sendMessage(tabId, message).catch(() => {})
+    // Auto-read page if requested and no content provided
+    if (request.autoReadPage && !pageContent && tabId) {
+      sendToUI({ action: 'status', message: '📖 Reading page context...' })
+      
+      try {
+        const readResult = await sendToContentScript<{
+          success: boolean
+          content?: string
+          title?: string
+          url?: string
+          length?: number
+        }>(tabId, { action: 'readPage' })
+
+        if (readResult.success && readResult.content) {
+          pageContent = readResult.content
+          console.log('[Madoka BG] Page read successfully:', readResult.length, 'chars')
+        }
+      } catch (e) {
+        console.warn('[Madoka BG] Failed to read page:', e)
       }
     }
 
-    console.log('[Madoka BG] 处理聊天请求:', {
-      message: query,
-      forceSearch: request.forceSearch,
-      hasPageContent: !!pageContent,
-      engine: request.engine,
-      isFromSidePanel,
-    })
+    // Use AI to analyze if search is needed
+    sendToUI({ action: 'status', message: '🤔 Analyzing query...' })
+    
+    const searchAnalysis = await analyzeSearchNeed(request.message)
+    console.log('[Madoka BG] Search analysis:', searchAnalysis)
 
-    // 处理搜索前缀
-    if (query.startsWith('/search ') || query.startsWith('/搜索 ')) {
-      query = query.replace(/^\/(search|搜索)\s+/, '')
-      console.log('[Madoka BG] 提取搜索关键词:', query)
-    }
+    if (searchAnalysis.needsSearch) {
+      sendToUI({ action: 'status', message: '🔍 Searching the web...' })
 
-    // 检测是否需要搜索
-    const needSearch = request.forceSearch || shouldSearch(request.message)
-    console.log('[Madoka BG] 是否需要搜索:', needSearch)
+      // Extract optimized search query
+      let searchQuery = searchAnalysis.searchQuery || request.message
+      if (!searchAnalysis.searchQuery && searchAnalysis.confidence < 0.8) {
+        // Use AI to extract better keywords
+        searchQuery = await extractSearchKeywords(request.message)
+      }
 
-    if (needSearch) {
-      sendToUI({
-        action: 'status',
-        message: '🔍 正在搜索...',
-      })
+      console.log('[Madoka BG] Search query:', searchQuery)
 
       try {
-        searchContext = await searchAndRead(query, {
+        searchContext = await searchAndRead(searchQuery, {
           engine: request.engine,
           tabId,
         })
@@ -108,29 +428,25 @@ async function handleChatRequest(
               snippet: r.snippet,
             })),
           })
+          sendToUI({ action: 'status', message: `📚 Found ${searchContext.results.length} results` })
         } else {
-          console.warn('[Madoka BG] 搜索未返回结果')
-          sendToUI({
-            action: 'status',
-            message: '⚠️ 搜索未找到结果，直接回答...',
-          })
+          sendToUI({ action: 'status', message: '⚠️ No search results found' })
         }
       } catch (e) {
-        console.error('[Madoka BG] 搜索失败:', e)
-        sendToUI({
-          action: 'status',
-          message: '⚠️ 搜索失败，直接回答...',
-        })
+        console.error('[Madoka BG] Search failed:', e)
+        sendToUI({ action: 'status', message: '⚠️ Search failed, answering directly...' })
       }
     }
 
-    // 构建消息
-    const messages = await handleChat(query, request.history || [], {
+    // Build messages with context
+    const messages = await handleChat(request.message, request.history || [], {
       pageContent: pageContent || undefined,
       searchContext: searchContext || undefined,
     })
 
-    // 调用 API
+    // Call API with streaming
+    sendToUI({ action: 'status', message: null }) // Clear status
+    
     let fullResponse = ''
     await callTongyiAPI(messages, (chunk, content) => {
       fullResponse = content
@@ -141,7 +457,7 @@ async function handleChatRequest(
       })
     })
 
-    // 发送完成消息
+    // Send completion message
     sendToUI({
       action: 'streamEnd',
       content: fullResponse,
@@ -154,14 +470,7 @@ async function handleChatRequest(
         : null,
     })
   } catch (e) {
-    console.error('[Madoka BG] 处理聊天失败:', e)
-    const sendToUI = (message: Record<string, unknown>) => {
-      if (!sender.tab) {
-        chrome.runtime.sendMessage(message).catch(() => {})
-      } else {
-        chrome.tabs.sendMessage(sender.tab.id!, message).catch(() => {})
-      }
-    }
+    console.error('[Madoka BG] Smart chat failed:', e)
     sendToUI({
       action: 'error',
       message: (e as Error).message,
@@ -169,22 +478,46 @@ async function handleChatRequest(
   }
 }
 
-// 安装/更新时初始化
+/**
+ * Handle legacy chat request (backward compatibility)
+ */
+async function handleChatRequest(
+  request: {
+    message: string
+    history?: { role: string; content: string }[]
+    forceSearch?: boolean
+    engine?: SearchEngine
+    pageContent?: string
+    tabId?: number
+  },
+  sender: chrome.runtime.MessageSender
+) {
+  // Use smart chat for all requests now
+  await handleSmartChatRequest(
+    {
+      ...request,
+      autoReadPage: false, // Preserve original behavior for legacy calls
+    },
+    sender
+  )
+}
+
+// Initialize on install/update
 chrome.runtime.onInstalled.addListener(async () => {
-  console.log('[Madoka] 扩展已安装/更新')
+  console.log('[Madoka] Extension installed/updated')
 
   const config = await getConfig()
   await saveConfig(config)
 })
 
-// 点击扩展图标时打开 Side Panel
+// Open Side Panel on extension icon click
 chrome.action.onClicked.addListener((tab) => {
   chrome.sidePanel.open({ windowId: tab.windowId })
 })
 
-// 设置 Side Panel 行为
+// Set Side Panel behavior
 chrome.sidePanel
   .setPanelBehavior({ openPanelOnActionClick: true })
-  .catch((error) => console.error('[Madoka] 设置 Side Panel 行为失败:', error))
+  .catch((error) => console.error('[Madoka] Failed to set Side Panel behavior:', error))
 
-console.log('[Madoka] Background Service Worker 已启动')
+console.log('[Madoka] Background Service Worker started')

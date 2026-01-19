@@ -1,51 +1,63 @@
 /**
- * Header 组件
- * 标题栏 - 带状态指示器和控制按钮
+ * Header Component
+ * Top bar with status and controls (legacy - now integrated in App.tsx)
  */
 
 import { motion } from 'framer-motion'
 import { useChatContext } from '../context/ChatContext'
 import { useSettings } from '../hooks/useSettings'
-import { variants, logoAnimation, pulseAnimation } from '../styles/animations'
+import { variants, pulseAnimation } from '../styles/animations'
 
 export function Header() {
-  const { setView, clearMessages } = useChatContext()
+  const { setView, clearMessages, toggleSidebar, state } = useChatContext()
   const { config, toggleEngine } = useSettings()
 
   return (
     <motion.header
-      className="flex items-center justify-between px-4 py-3 bg-white border-b border-madoka-border"
+      className="flex items-center justify-between px-4 py-3 bg-[var(--bg-secondary)] border-b border-[var(--border-primary)]"
       variants={variants.header}
       initial="initial"
       animate="animate"
       exit="exit"
       transition={{ duration: 0.2 }}
     >
-      {/* Logo 和状态 */}
+      {/* Logo and status */}
       <div className="flex items-center gap-2">
+        {!state.sidebarOpen && (
+          <button
+            onClick={toggleSidebar}
+            className="p-1.5 -ml-1 rounded-md hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        )}
+        
         <motion.div
-          className="w-8 h-8 bg-black text-white rounded-lg flex items-center justify-center text-xs font-bold"
-          {...logoAnimation}
+          className="w-8 h-8 bg-[var(--accent-primary)] text-white rounded-lg flex items-center justify-center text-xs font-bold"
+          animate={{ scale: [1, 1.02, 1] }}
+          transition={{ duration: 3, repeat: Infinity }}
         >
           M
         </motion.div>
         <div className="flex flex-col">
-          <span className="text-sm font-semibold text-madoka-text">Madoka</span>
+          <span className="text-sm font-semibold text-[var(--text-primary)]">Madoka</span>
           <motion.div
-            className="flex items-center gap-1 text-xs text-madoka-muted"
+            className="flex items-center gap-1 text-xs text-[var(--text-muted)]"
             {...pulseAnimation}
           >
-            <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+            <div className="w-1.5 h-1.5 bg-[var(--accent-success)] rounded-full" />
             <span>Ready</span>
           </motion.div>
         </div>
       </div>
 
-      {/* 操作按钮 */}
+      {/* Action buttons */}
       <div className="flex items-center gap-1">
-        {/* 搜索引擎切换 */}
+        {/* Search engine toggle */}
         <motion.button
-          className="px-2 py-1 text-xs font-medium bg-madoka-bg-tertiary rounded-md hover:bg-madoka-border transition-colors"
+          className="px-2 py-1 text-xs font-medium bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-hover)] transition-colors"
           onClick={toggleEngine}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
@@ -53,11 +65,11 @@ export function Header() {
           {config.searchEngine === 'bing' ? 'Bing' : 'Google'}
         </motion.button>
 
-        {/* 清空按钮 */}
+        {/* Clear button */}
         <motion.button
-          className="p-2 text-madoka-muted hover:text-madoka-text hover:bg-madoka-bg-tertiary rounded-lg transition-colors"
+          className="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-lg transition-colors"
           onClick={clearMessages}
-          title="清空对话"
+          title="Clear conversation"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
@@ -66,11 +78,11 @@ export function Header() {
           </svg>
         </motion.button>
 
-        {/* 设置按钮 */}
+        {/* Settings button */}
         <motion.button
-          className="p-2 text-madoka-muted hover:text-madoka-text hover:bg-madoka-bg-tertiary rounded-lg transition-colors"
+          className="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-lg transition-colors"
           onClick={() => setView('settings')}
-          title="设置"
+          title="Settings"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >

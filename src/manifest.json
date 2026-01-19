@@ -13,7 +13,9 @@
     "activeTab",
     "scripting",
     "sidePanel",
-    "tabs"
+    "tabs",
+    "bookmarks",
+    "history"
   ],
   "host_permissions": [
     "https://www.google.com/*",

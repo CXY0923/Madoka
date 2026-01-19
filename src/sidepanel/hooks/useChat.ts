@@ -1,61 +1,68 @@
 /**
  * useChat Hook
- * 处理聊天逻辑
+ * Handles chat logic with smart search and auto page reading
  */
 
 import { useCallback } from 'react'
 import { useChatContext } from '../context/ChatContext'
-import { sendChatRequest, getActiveTab } from '../../shared/messaging'
-import { SEARCH_PREFIXES } from '../../shared/constants'
+import { getActiveTab } from '../../shared/messaging'
 
 export function useChat() {
-  const { state, addMessage, startResponse, dispatch } = useChatContext()
+  const { state, addMessage, startResponse, dispatch, mode, pageContent } = useChatContext()
 
   const sendMessage = useCallback(
     async (content: string) => {
       if (!content.trim() || state.isResponding) return
 
-      // 检查是否是强制搜索
-      const forceSearch = SEARCH_PREFIXES.some((prefix) => content.startsWith(prefix))
+      // Check if force search
+      const forceSearch = content.startsWith('/search ') || content.startsWith('/搜索 ')
 
-      // 添加用户消息
+      // Add user message
       addMessage({
         role: 'user',
         content,
       })
 
-      // 设置状态
-      dispatch({ type: 'SET_STATUS', payload: forceSearch ? 'searching' : 'responding' })
+      // Set status
+      dispatch({ type: 'SET_STATUS', payload: 'responding' })
 
-      // 开始助手响应
+      // Start assistant response
       startResponse()
 
-      // 获取当前标签页
+      // Get current tab
       const tab = await getActiveTab()
 
-      // 构建历史消息
-      const history = state.messages
+      // Build history messages
+      const history = state.conversations
+        .find(c => c.id === state.activeConversationId)
+        ?.messages
         .filter((m) => m.role !== 'system')
         .map((m) => ({
           role: m.role,
           content: m.content,
-        }))
+        })) || []
 
-      // 发送聊天请求
-      sendChatRequest(content, {
+      // In chat mode, use smart chat with auto page reading
+      const useSmartChat = mode === 'chat'
+
+      // Send chat request
+      chrome.runtime.sendMessage({
+        action: useSmartChat ? 'smartChat' : 'chat',
+        message: content,
         history,
         forceSearch,
         engine: state.currentEngine,
-        pageContent: state.pageContent?.markdown,
+        pageContent: pageContent?.markdown,
         tabId: tab?.id,
+        autoReadPage: useSmartChat && !pageContent, // Auto-read if no page content in chat mode
       })
 
-      // 清除页面内容
-      if (state.pageContent) {
+      // Clear page content after sending
+      if (pageContent) {
         dispatch({ type: 'SET_PAGE_CONTENT', payload: null })
       }
     },
-    [state, addMessage, startResponse, dispatch]
+    [state, addMessage, startResponse, dispatch, mode, pageContent]
   )
 
   return {

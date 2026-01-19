@@ -1,6 +1,6 @@
 /**
- * SettingsPanel 组件
- * 设置面板
+ * SettingsPanel Component
+ * Settings configuration panel
  */
 
 import { useState } from 'react'
@@ -9,6 +9,7 @@ import { useChatContext } from '../context/ChatContext'
 import { useSettings } from '../hooks/useSettings'
 import { variants } from '../styles/animations'
 import { MODEL_OPTIONS, MAX_RESULTS_OPTIONS } from '../../shared/constants'
+import { ThemeToggleSwitch } from './common/ThemeToggle'
 
 export function SettingsPanel() {
   const { setView } = useChatContext()
@@ -17,25 +18,25 @@ export function SettingsPanel() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-6 h-6 border-2 border-madoka-text border-t-transparent rounded-full animate-spin" />
+      <div className="flex items-center justify-center h-full bg-[var(--bg-primary)]">
+        <div className="w-6 h-6 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
     <motion.div
-      className="h-full bg-white flex flex-col"
+      className="h-full bg-[var(--bg-primary)] flex flex-col"
       variants={variants.settingsPanel}
       initial="initial"
       animate="animate"
       exit="exit"
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
     >
-      {/* 标题栏 */}
-      <header className="flex items-center gap-3 px-4 py-3 border-b border-madoka-border">
+      {/* Header */}
+      <header className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border-primary)] bg-[var(--bg-secondary)]">
         <motion.button
-          className="p-2 -ml-2 text-madoka-muted hover:text-madoka-text hover:bg-madoka-bg-tertiary rounded-lg transition-colors"
+          className="p-2 -ml-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-lg transition-colors"
           onClick={() => setView('chat')}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -44,30 +45,45 @@ export function SettingsPanel() {
             <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
           </svg>
         </motion.button>
-        <span className="font-semibold text-madoka-text">设置</span>
+        <span className="font-semibold text-[var(--text-primary)]">Settings</span>
       </header>
 
-      {/* 设置内容 */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* API 配置 */}
+      {/* Settings content */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 hide-scrollbar">
+        {/* Appearance */}
         <section>
-          <h3 className="text-xs font-semibold text-madoka-muted uppercase tracking-wider mb-3">
-            API 配置
+          <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">
+            Appearance
+          </h3>
+          
+          <div className="flex items-center justify-between p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+            <div>
+              <div className="text-sm text-[var(--text-primary)]">Dark Mode</div>
+              <div className="text-xs text-[var(--text-muted)]">Switch between light and dark theme</div>
+            </div>
+            <ThemeToggleSwitch />
+          </div>
+        </section>
+
+        {/* API Configuration */}
+        <section>
+          <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">
+            API Configuration
           </h3>
 
           {/* API Key */}
           <div className="space-y-2">
-            <label className="text-sm text-madoka-text">通义千问 API Key</label>
+            <label className="text-sm text-[var(--text-primary)]">Tongyi API Key</label>
             <div className="flex gap-2">
               <input
                 type={showPassword ? 'text' : 'password'}
-                className="flex-1 px-3 py-2 text-sm bg-madoka-bg-tertiary rounded-lg outline-none focus:ring-1 focus:ring-madoka-border"
+                className="flex-1 px-3 py-2 text-sm bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-lg outline-none focus:border-[var(--border-focus)] focus:ring-1 focus:ring-[var(--border-focus)] transition-all"
                 value={config.apiKey}
                 onChange={(e) => updateConfig('apiKey', e.target.value)}
                 placeholder="sk-xxxxxxxx"
               />
               <button
-                className="p-2 text-madoka-muted hover:text-madoka-text hover:bg-madoka-bg-tertiary rounded-lg transition-colors"
+                className="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-lg transition-colors"
                 onClick={() => setShowPassword(!showPassword)}
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
@@ -77,11 +93,11 @@ export function SettingsPanel() {
             </div>
           </div>
 
-          {/* 模型选择 */}
+          {/* Model selection */}
           <div className="space-y-2 mt-4">
-            <label className="text-sm text-madoka-text">模型选择</label>
+            <label className="text-sm text-[var(--text-primary)]">Model</label>
             <select
-              className="w-full px-3 py-2 text-sm bg-madoka-bg-tertiary rounded-lg outline-none focus:ring-1 focus:ring-madoka-border"
+              className="w-full px-3 py-2 text-sm bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-lg outline-none focus:border-[var(--border-focus)] focus:ring-1 focus:ring-[var(--border-focus)] transition-all"
               value={config.model}
               onChange={(e) => updateConfig('model', e.target.value)}
             >
@@ -94,21 +110,21 @@ export function SettingsPanel() {
           </div>
         </section>
 
-        {/* 搜索设置 */}
+        {/* Search Settings */}
         <section>
-          <h3 className="text-xs font-semibold text-madoka-muted uppercase tracking-wider mb-3">
-            搜索设置
+          <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">
+            Search Settings
           </h3>
 
-          {/* 默认搜索引擎 */}
+          {/* Default search engine */}
           <div className="space-y-2">
-            <label className="text-sm text-madoka-text">默认搜索引擎</label>
+            <label className="text-sm text-[var(--text-primary)]">Default Search Engine</label>
             <div className="flex gap-2">
               <button
                 className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
                   config.searchEngine === 'bing'
-                    ? 'bg-black text-white'
-                    : 'bg-madoka-bg-tertiary text-madoka-text hover:bg-madoka-border'
+                    ? 'bg-[var(--accent-primary)] text-white'
+                    : 'bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-[var(--border-primary)]'
                 }`}
                 onClick={() => updateConfig('searchEngine', 'bing')}
               >
@@ -117,8 +133,8 @@ export function SettingsPanel() {
               <button
                 className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
                   config.searchEngine === 'google'
-                    ? 'bg-black text-white'
-                    : 'bg-madoka-bg-tertiary text-madoka-text hover:bg-madoka-border'
+                    ? 'bg-[var(--accent-primary)] text-white'
+                    : 'bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-[var(--border-primary)]'
                 }`}
                 onClick={() => updateConfig('searchEngine', 'google')}
               >
@@ -127,11 +143,11 @@ export function SettingsPanel() {
             </div>
           </div>
 
-          {/* 搜索结果数量 */}
+          {/* Max results */}
           <div className="space-y-2 mt-4">
-            <label className="text-sm text-madoka-text">搜索结果数量</label>
+            <label className="text-sm text-[var(--text-primary)]">Max Search Results</label>
             <select
-              className="w-full px-3 py-2 text-sm bg-madoka-bg-tertiary rounded-lg outline-none focus:ring-1 focus:ring-madoka-border"
+              className="w-full px-3 py-2 text-sm bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-lg outline-none focus:border-[var(--border-focus)] focus:ring-1 focus:ring-[var(--border-focus)] transition-all"
               value={config.maxResults}
               onChange={(e) => updateConfig('maxResults', parseInt(e.target.value))}
             >
@@ -145,28 +161,28 @@ export function SettingsPanel() {
         </section>
       </div>
 
-      {/* 保存按钮 */}
-      <div className="p-4 border-t border-madoka-border">
+      {/* Save button */}
+      <div className="p-4 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)]">
         <motion.button
-          className="w-full py-2.5 bg-black text-white text-sm font-semibold rounded-xl disabled:opacity-50"
+          className="w-full py-2.5 bg-[var(--accent-primary)] text-white text-sm font-semibold rounded-xl disabled:opacity-50"
           onClick={save}
           disabled={saving}
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.99 }}
         >
-          {saving ? '保存中...' : '保存设置'}
+          {saving ? 'Saving...' : 'Save Settings'}
         </motion.button>
 
-        {/* 状态提示 */}
+        {/* Status message */}
         {saveStatus !== 'idle' && (
           <motion.div
             className={`mt-2 text-center text-xs ${
-              saveStatus === 'success' ? 'text-green-600' : 'text-red-500'
+              saveStatus === 'success' ? 'text-[var(--accent-success)]' : 'text-[var(--accent-danger)]'
             }`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
-            {saveStatus === 'success' ? '✓ 设置已保存' : '✕ 保存失败'}
+            {saveStatus === 'success' ? '✓ Settings saved' : '✕ Failed to save'}
           </motion.div>
         )}
       </div>
