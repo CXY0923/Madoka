@@ -389,3 +389,91 @@ export function shouldSearch(message: string): boolean {
 
   return searchKeywords.some((kw) => message.includes(kw))
 }
+
+// ============ Prompt Optimization ============
+
+/**
+ * System prompt for optimizing user prompts (CO-STAR framework)
+ */
+const PROMPT_OPTIMIZER_SYSTEM = [
+  '# Role',
+  'You are an Expert Prompt Architect. You specialize in creating "Structured Prompts" that maximize LLM reasoning capabilities.',
+  '',
+  '# Task',
+  'Your task is to take the user\'s raw input and transform it into a professional, structured prompt following the "CO-STAR" framework (Context, Objective, Style, Tone, Audience, Response).',
+  '',
+  '# Workflow',
+  '1. **Analyze**: Understand the user\'s core intent.',
+  '2. **Expand**: Fill in missing details (Who is the audience? What is the format? What is the goal?).',
+  '3. **Structure**: Organize the prompt using clear Markdown headers.',
+  '',
+  '# The Output Structure',
+  'You must output the result in a code block containing the following sections:',
+  '',
+  '```markdown',
+  '# Role',
+  '[Define the expert persona]',
+  '',
+  '# Context',
+  '[Describe the background and situation]',
+  '',
+  '# Task',
+  '[Step-by-step instructions on what needs to be done]',
+  '',
+  '# Constraints & Rules',
+  '- [Rule 1]',
+  '- [Rule 2]',
+  '',
+  '# Output Format',
+  '[Specific format requirements, e.g., JSON, table, detailed report]',
+  '```',
+  '',
+  '# Constraints',
+  '- DO NOT execute the user\'s request. Only rewrite the prompt.',
+  '- Maintain the user\'s original language (Chinese input -> Chinese prompt, English input -> English prompt).',
+  '- If the user\'s input is too vague, make reasonable assumptions to enhance the prompt quality, but mark them as [Assumptions].',
+  '- Output ONLY the optimized prompt in the markdown code block, no additional explanations.',
+].join('\n')
+
+/**
+ * Call Tongyi API for prompt optimization (non-streaming)
+ * @param userInput - The user's input to optimize
+ * @param systemPrompt - Optional custom system prompt (uses default if not provided)
+ */
+export async function callTongyiAPIForOptimize(userInput: string, systemPrompt?: string): Promise<string> {
+  const config = await getConfig()
+
+  const messages: ChatMessage[] = [
+    { role: 'system', content: systemPrompt || PROMPT_OPTIMIZER_SYSTEM },
+    { role: 'user', content: userInput },
+  ]
+
+  const response = await fetch(config.apiEndpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${config.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: config.model,
+      messages,
+      stream: false,
+    }),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`API request failed: ${response.status} - ${errorText}`)
+  }
+
+  const json = await response.json()
+  const content = json.choices?.[0]?.message?.content || ''
+
+  // Extract content from markdown code block if present
+  const codeBlockMatch = content.match(/```(?:markdown)?\n?([\s\S]*?)```/)
+  if (codeBlockMatch) {
+    return codeBlockMatch[1].trim()
+  }
+
+  return content.trim()
+}

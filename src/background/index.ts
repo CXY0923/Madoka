@@ -8,7 +8,7 @@ import type { ActionParams, ActionSpace, ActionResult } from '../shared/action-t
 import type { AnyContextRef } from '../shared/context-types'
 import { getConfig, saveConfig } from './config'
 import { searchAndRead } from './search'
-import { handleChat, callTongyiAPI, analyzeSearchNeed, extractSearchKeywords } from './api'
+import { handleChat, callTongyiAPI, analyzeSearchNeed, extractSearchKeywords, callTongyiAPIForOptimize } from './api'
 import {
   getAllTabs,
   searchTabs,
@@ -300,6 +300,29 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const content = await resolveContextContent(ref)
         sendResponse({ success: true, data: content })
       } catch (e) {
+        sendResponse({ success: false, error: (e as Error).message })
+      }
+    })()
+    return true
+  }
+
+  // ============ Prompt Optimization ============
+
+  if (request.action === 'optimizePrompt') {
+    ;(async () => {
+      try {
+        const userInput = request.input as string
+        const systemPrompt = request.systemPrompt as string | undefined
+        
+        if (!userInput || !userInput.trim()) {
+          sendResponse({ success: false, error: 'Input is empty' })
+          return
+        }
+
+        const optimizedPrompt = await callTongyiAPIForOptimize(userInput, systemPrompt)
+        sendResponse({ success: true, data: optimizedPrompt })
+      } catch (e) {
+        console.error('[Madoka BG] Failed to optimize prompt:', e)
         sendResponse({ success: false, error: (e as Error).message })
       }
     })()

@@ -6,7 +6,6 @@
 import { useState } from 'react'
 import { ChatProvider, useChatContext } from './context/ChatContext'
 import { Sidebar } from './components/layout/Sidebar'
-import { ModeSwitch } from './components/layout/ModeSwitch'
 import { MessageList } from './components/MessageList'
 import { Composer } from './components/composer'
 import { SettingsPanel } from './components/SettingsPanel'
@@ -43,36 +42,28 @@ function MainContent() {
 
   return (
     <div className="flex-1 flex flex-col h-full min-w-0 bg-[var(--bg-primary)]">
-      {/* Header - Minimal Cursor style */}
-      <header className="flex items-center justify-between px-4 py-2 border-b border-[var(--border-primary)] bg-[var(--bg-primary)]">
-        <div className="flex items-center gap-3">
-          {/* Sidebar toggle when closed */}
-          {!sidebarOpen && (
-            <button
-              onClick={toggleSidebar}
-              className="p-1.5 rounded-md hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-              title="Open sidebar"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-          )}
+      {/* Header - Minimal style (只在 sidebar 关闭时显示切换按钮) */}
+      {!sidebarOpen && (
+        <header className="flex items-center px-4 py-2 border-b border-[var(--border-primary)] bg-[var(--bg-primary)]">
+          <button
+            onClick={toggleSidebar}
+            className="p-1.5 rounded-md hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+            title="Open sidebar"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
           
-          {/* Mode Switch */}
-          <ModeSwitch />
-        </div>
-
-        {/* Status indicator */}
-        <div className="flex items-center gap-2">
+          {/* Status indicator */}
           {isResponding && (
-            <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
+            <div className="flex items-center gap-1.5 ml-auto text-xs text-[var(--text-muted)]">
               <span className="w-1.5 h-1.5 bg-[var(--accent-success)] rounded-full animate-pulse" />
               <span>Thinking...</span>
             </div>
           )}
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* Main chat/agent area - Cursor style centered layout */}
       <main className="flex-1 overflow-hidden flex flex-col">
