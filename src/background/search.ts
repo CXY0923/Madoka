@@ -3,7 +3,15 @@
  */
 
 import type { SearchResult, SearchEngine } from '../shared/types'
+import {
+  MULTI_SEARCH_MAX_ROUNDS,
+  RESULTS_PER_ROUND,
+  MULTI_SEARCH_MAX_TOTAL,
+} from '../shared/constants'
 import { getConfig } from './config'
+
+/** 语气词等用于生成变体 query 时剔除 */
+const FILLERS = /[的得地了着呢吗啊噢哦？?]/g
 
 // /**
 //  * 执行网络搜索（已弃用 - 使用 performSearchInRealTab 代替）
@@ -706,5 +714,116 @@ export async function searchAndRead(
     query,
     engine,
     results: finalResults,
+  }
+}
+
+/**
+ * 生成多条相似但不同的搜索 query，用于多轮关联搜索（启发式）
+ */
+export function generateSearchQueries(
+  question: string,
+  maxQueries: number = MULTI_SEARCH_MAX_ROUNDS
+): string[] {
+  const q = (question || '').trim()
+  if (!q) return ['']
+  const queries: string[] = [q]
+  if (maxQueries <= 1) return queries
+
+  const condensed = q
+    .replace(FILLERS, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 20)
+  if (
+    condensed &&
+    condensed !== q &&
+    condensed.length >= 2 &&
+    !queries.includes(condensed)
+  ) {
+    queries.push(condensed)
+  }
+
+  let variant = ''
+  if (/如何|怎么|怎样/.test(q)) {
+    const m = q.match(/(?:如何|怎么|怎样)([\s\S]+?)(?:[?？]|$)/)
+    const x = m
+      ? m[1]
+          .trim()
+          .replace(FILLERS, ' ')
+          .replace(/\s+/g, ' ')
+          .slice(0, 12)
+      : ''
+    if (x) variant = `${x} 方法`
+  } else if (/什么是|啥是/.test(q)) {
+    const m = q.match(/(?:什么是|啥是)([\s\S]+?)(?:[?？]|$)/)
+    const x = m
+      ? m[1]
+          .trim()
+          .replace(FILLERS, ' ')
+          .replace(/\s+/g, ' ')
+          .slice(0, 12)
+      : ''
+    if (x) variant = `${x} 定义`
+  } else if (/和|与|对比|比较/.test(q)) {
+    const parts = q
+      .split(/和|与|对比|比较/)
+      .map((s) => s.replace(FILLERS, ' ').trim())
+      .filter((s) => s.length >= 1)
+    if (parts.length >= 2) variant = `${parts[0]} ${parts[1]} 对比`
+  }
+  if (variant && !queries.includes(variant) && queries.length < maxQueries) {
+    queries.push(variant)
+  }
+  return queries.slice(0, maxQueries)
+}
+
+export interface SearchAndReadMultiRoundOptions {
+  tabId?: number
+  engine?: SearchEngine
+  maxRounds?: number
+  resultsPerRound?: number
+  maxTotal?: number
+}
+
+/**
+ * 多轮关联搜索：多条 query 分别搜索，按 URL 去重，总结果上限
+ */
+export async function searchAndReadMultiRound(
+  question: string,
+  options: SearchAndReadMultiRoundOptions = {}
+): Promise<{ query: string; engine: SearchEngine; results: SearchResult[] }> {
+  const maxRounds = options.maxRounds ?? MULTI_SEARCH_MAX_ROUNDS
+  const perRound = options.resultsPerRound ?? RESULTS_PER_ROUND
+  const maxTotal = options.maxTotal ?? MULTI_SEARCH_MAX_TOTAL
+
+  const queries = generateSearchQueries(question, maxRounds)
+  const seen = new Map<string, SearchResult & { fromQuery?: string }>()
+  let engine: SearchEngine = 'bing'
+
+  for (const q of queries) {
+    if (seen.size >= maxTotal) break
+    try {
+      const round = await searchAndRead(q, {
+        tabId: options.tabId,
+        engine: options.engine,
+        maxResults: perRound,
+      })
+      engine = round.engine
+      for (const r of round.results) {
+        if (!seen.has(r.link)) {
+          seen.set(r.link, { ...r, fromQuery: q })
+        }
+      }
+    } catch (e) {
+      console.warn('[Madoka BG] 多轮搜索单轮失败:', q, (e as Error).message)
+    }
+  }
+
+  const results = Array.from(seen.values()).slice(0, maxTotal)
+  console.log('[Madoka BG] 多轮搜索完成:', results.length, '条，来自', queries.length, '轮 query')
+  return {
+    query: question,
+    engine,
+    results,
   }
 }

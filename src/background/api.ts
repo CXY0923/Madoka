@@ -4,7 +4,13 @@
  */
 
 import type { SearchContext } from '../shared/types'
-import { SYSTEM_PROMPT } from '../shared/constants'
+import {
+  SYSTEM_PROMPT,
+  CONDENSE_QUESTION_PROMPT,
+  FOLLOW_UP_INDICATORS,
+  CONDENSE_MAX_HISTORY_TURNS,
+  CONDENSE_FOLLOW_UP_MAX_LEN,
+} from '../shared/constants'
 import { getConfig } from './config'
 
 interface ChatMessage {
@@ -46,6 +52,7 @@ export function buildStructuredMessage(
       title: string
       url: string
       content: string
+      from_query?: string
     }[] = []
 
     for (const r of searchContext.results) {
@@ -57,12 +64,14 @@ export function buildStructuredMessage(
       const truncatedContent = content.slice(0, availableLength)
       totalLength += truncatedContent.length
 
-      processedResults.push({
+      const item: (typeof processedResults)[number] = {
         position: processedResults.length + 1,
         title: r.title,
         url: r.link,
         content: truncatedContent,
-      })
+      }
+      if (r.fromQuery) item.from_query = r.fromQuery
+      processedResults.push(item)
     }
 
     messageObj.search_results = {
@@ -388,6 +397,51 @@ export function shouldSearch(message: string): boolean {
   ]
 
   return searchKeywords.some((kw) => message.includes(kw))
+}
+
+// ============ Condense Question ============
+
+type HistoryMessage = { role: string; content: string }
+
+function formatChatHistory(history: HistoryMessage[]): string {
+  if (!Array.isArray(history) || history.length === 0) return ''
+  const recent = history.slice(-CONDENSE_MAX_HISTORY_TURNS * 2)
+  return recent
+    .map((m) => `${m.role === 'user' ? '用户' : '助手'}: ${(m.content || '').slice(0, 150)}`)
+    .join('\n')
+}
+
+function isFollowUp(question: string, history: HistoryMessage[]): boolean {
+  if (!history?.length) return false
+  const q = (question || '').trim()
+  if (q.length > CONDENSE_FOLLOW_UP_MAX_LEN) return false
+  return FOLLOW_UP_INDICATORS.test(q) || q.length <= 8
+}
+
+/**
+ * 将追问转为独立可搜索问题（结合对话历史）
+ * 若非追问或调用失败，返回原 question
+ */
+export async function condenseQuestion(
+  question: string,
+  history: HistoryMessage[] = []
+): Promise<string> {
+  if (!isFollowUp(question, history)) {
+    return question
+  }
+  const chatHistoryStr = formatChatHistory(history)
+  const prompt = CONDENSE_QUESTION_PROMPT.replace('{chat_history}', chatHistoryStr).replace(
+    '{question}',
+    question
+  )
+  try {
+    const response = await callTongyiAPISync([{ role: 'user', content: prompt }])
+    const standalone = (response || '').trim()
+    return standalone || question
+  } catch (e) {
+    console.warn('[Madoka BG] Condense question failed:', (e as Error).message)
+    return question
+  }
 }
 
 // ============ Prompt Optimization ============

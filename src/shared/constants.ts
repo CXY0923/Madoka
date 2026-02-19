@@ -63,3 +63,23 @@ export const MAX_RESULTS_OPTIONS = [
   { value: 8, label: '8 个' },
   { value: 10, label: '10 个' },
 ] as const
+
+// 多轮关联搜索：每轮取几条、最多几轮、总结果上限
+export const MULTI_SEARCH_MAX_ROUNDS = 3
+export const RESULTS_PER_ROUND = 2
+export const MULTI_SEARCH_MAX_TOTAL = 8
+
+// Condense Question：将追问重写为独立可搜索问题（LangChain ConversationalRetrieval 思路）
+export const CONDENSE_QUESTION_PROMPT = `根据以下对话历史和用户的追问，将追问重写为一个独立的、可单独理解的问题。使用原文语言，仅输出重写后的问题，不要解释。
+
+对话历史：
+{chat_history}
+
+追问：{question}
+
+独立问题：`
+
+// 追问特征：以代词/指代开头或过短片段（需结合历史理解）
+export const FOLLOW_UP_INDICATORS = /^(它|那个|这个|他|她|他的|她的|它的|怎么样|呢|还有吗|然后呢?|多少钱)$|^(它|那个|这个|他|她)(呢|的)?/
+export const CONDENSE_MAX_HISTORY_TURNS = 5
+export const CONDENSE_FOLLOW_UP_MAX_LEN = 15

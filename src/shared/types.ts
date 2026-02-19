@@ -19,6 +19,8 @@ export interface SearchResult {
   snippet: string
   position: number
   fullContent?: string
+  /** 多轮搜索时标记来自哪条 query */
+  fromQuery?: string
 }
 
 // 搜索上下文

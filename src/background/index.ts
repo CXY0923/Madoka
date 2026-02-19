@@ -7,8 +7,15 @@ import type { SearchEngine, SearchContext } from '../shared/types'
 import type { ActionParams, ActionSpace, ActionResult } from '../shared/action-types'
 import type { AnyContextRef } from '../shared/context-types'
 import { getConfig, saveConfig } from './config'
-import { searchAndRead } from './search'
-import { handleChat, callTongyiAPI, analyzeSearchNeed, extractSearchKeywords, callTongyiAPIForOptimize } from './api'
+import { searchAndRead, searchAndReadMultiRound } from './search'
+import {
+  handleChat,
+  callTongyiAPI,
+  analyzeSearchNeed,
+  extractSearchKeywords,
+  condenseQuestion,
+  callTongyiAPIForOptimize,
+} from './api'
 import {
   getAllTabs,
   searchTabs,
@@ -433,11 +440,13 @@ async function handleSmartChatRequest(
         // Use AI to extract better keywords
         searchQuery = await extractSearchKeywords(request.message)
       }
+      // 追问转独立问题（Condense Question）
+      searchQuery = await condenseQuestion(searchQuery, request.history || [])
 
       console.log('[Madoka BG] Search query:', searchQuery)
 
       try {
-        searchContext = await searchAndRead(searchQuery, {
+        searchContext = await searchAndReadMultiRound(searchQuery, {
           engine: request.engine,
           tabId,
         })
