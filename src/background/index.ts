@@ -16,6 +16,7 @@ import {
   condenseQuestion,
   callTongyiAPIForOptimize,
 } from './api'
+import { handleGitHubSearch } from './githubSearch'
 import {
   getAllTabs,
   searchTabs,
@@ -71,6 +72,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'search') {
     searchAndRead(request.query, request.options)
       .then((results) => sendResponse({ success: true, data: results }))
+      .catch((e: Error) => sendResponse({ success: false, error: e.message }))
+    return true
+  }
+
+  if (request.action === 'githubSearch') {
+    const userQuery = (request.userQuery as string) || ''
+    handleGitHubSearch(userQuery)
+      .then((result) => sendResponse(result))
       .catch((e: Error) => sendResponse({ success: false, error: e.message }))
     return true
   }

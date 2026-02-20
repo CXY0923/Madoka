@@ -11,6 +11,7 @@ import type {
   SearchResult,
   SearchEngine,
   PageContent,
+  GitHubRepoItem,
 } from '../../shared/types'
 import type {
   ActionSpace,
@@ -132,9 +133,9 @@ type AppAction =
   | { type: 'UPDATE_CONVERSATION_TITLE'; payload: { id: string; title: string } }
   // Message actions (for active conversation)
   | { type: 'ADD_MESSAGE'; payload: Message }
-  | { type: 'UPDATE_MESSAGE'; payload: { id: string; content: string } }
+  | { type: 'UPDATE_MESSAGE'; payload: { id: string; content: string; githubItems?: GitHubRepoItem[] } }
   | { type: 'CLEAR_MESSAGES' }
-  | { type: 'FINISH_RESPONSE'; payload: string }
+  | { type: 'FINISH_RESPONSE'; payload: string | { content: string; githubItems?: GitHubRepoItem[] } }
   // UI actions
   | { type: 'SET_SIDEBAR_OPEN'; payload: boolean }
   | { type: 'SET_THEME'; payload: Theme }
@@ -261,7 +262,9 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return updateActiveConversation(state, conv => ({
         ...conv,
         messages: conv.messages.map(msg =>
-          msg.id === action.payload.id ? { ...msg, content: action.payload.content } : msg
+          msg.id === action.payload.id
+            ? { ...msg, content: action.payload.content, ...(action.payload.githubItems != null && { githubItems: action.payload.githubItems }) }
+            : msg
         ),
       }))
     
@@ -272,18 +275,24 @@ function appReducer(state: AppState, action: AppAction): AppState {
         title: 'New Conversation',
       }))
     
-    case 'FINISH_RESPONSE':
+    case 'FINISH_RESPONSE': {
+      const payload = action.payload
+      const content = typeof payload === 'string' ? payload : payload.content
+      const githubItems = typeof payload === 'object' ? payload.githubItems : undefined
       return {
         ...updateActiveConversation(state, conv => ({
           ...conv,
           messages: conv.messages.map(msg =>
-            msg.isStreaming ? { ...msg, content: action.payload, isStreaming: false } : msg
+            msg.isStreaming
+              ? { ...msg, content, ...(githubItems != null && { githubItems }), isStreaming: false }
+              : msg
           ),
         })),
         status: 'idle',
         isResponding: false,
         searchStatus: null,
       }
+    }
     
     // UI actions
     case 'SET_SIDEBAR_OPEN':
@@ -481,7 +490,7 @@ interface ChatContextType {
   // Chat methods
   setEngine: (engine: SearchEngine) => void
   startResponse: () => string
-  finishResponse: (content: string) => void
+  finishResponse: (content: string, githubItems?: GitHubRepoItem[]) => void
   setSearchResults: (messageId: string, results: SearchResult[]) => void
   
   // Agent methods
@@ -648,8 +657,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return id
   }, [addMessage])
 
-  const finishResponse = useCallback((content: string) => {
-    dispatch({ type: 'FINISH_RESPONSE', payload: content })
+  const finishResponse = useCallback((content: string, githubItems?: GitHubRepoItem[]) => {
+    dispatch({
+      type: 'FINISH_RESPONSE',
+      payload: githubItems != null ? { content, githubItems } : content,
+    })
     currentAssistantId.current = null
   }, [])
 

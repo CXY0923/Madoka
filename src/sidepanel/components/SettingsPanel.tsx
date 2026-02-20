@@ -108,6 +108,21 @@ export function SettingsPanel() {
               ))}
             </select>
           </div>
+
+          {/* GitHub Token（找项目功能限流） */}
+          <div className="space-y-2 mt-4">
+            <label className="text-sm text-[var(--text-primary)]">GitHub Token（可选）</label>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              className="w-full px-3 py-2 text-sm bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-lg outline-none focus:border-[var(--border-focus)] focus:ring-1 focus:ring-[var(--border-focus)] transition-all"
+              value={config.githubToken ?? ''}
+              onChange={(e) => updateConfig('githubToken', e.target.value)}
+              placeholder="ghp_xxx（不填则使用未认证限流）"
+            />
+            <div className="text-xs text-[var(--text-muted)]">
+              用于「找项目」时提高 GitHub API 限流上限；不填也可用，仅限流更严。
+            </div>
+          </div>
         </section>
 
         {/* Search Settings */}

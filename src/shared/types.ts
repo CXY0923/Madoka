@@ -2,6 +2,16 @@
  * 共享类型定义
  */
 
+// GitHub 找项目卡片项（callpeek 风格）
+export interface GitHubRepoItem {
+  full_name: string
+  html_url: string
+  description: string
+  stargazers_count: number
+  language: string
+  updated_at: string
+}
+
 // 消息类型
 export interface Message {
   id: string
@@ -9,6 +19,8 @@ export interface Message {
   content: string
   timestamp: number
   searchResults?: SearchResult[]
+  /** GitHub 找项目模式返回的仓库列表 */
+  githubItems?: GitHubRepoItem[]
   isStreaming?: boolean
 }
 
@@ -41,6 +53,8 @@ export interface AppConfig {
   searchEngine: SearchEngine
   maxResults: number
   maxContentLength: number
+  /** 可选：GitHub Token，提高 API 限流上限 */
+  githubToken?: string
 }
 
 // 默认配置
@@ -51,6 +65,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   searchEngine: 'bing',
   maxResults: 5,
   maxContentLength: 400000,
+  githubToken: '',
 }
 
 // 视图状态
