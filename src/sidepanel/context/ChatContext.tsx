@@ -11,6 +11,7 @@ import type {
   SearchResult,
   SearchEngine,
   PageContent,
+  GitHubRepoItem,
 } from '../../shared/types'
 import type {
   ActionSpace,
@@ -36,7 +37,7 @@ import { initializeTheme, setTheme as setDocTheme } from '../styles/theme'
 // ============ Types ============
 
 export type AppMode = 'chat' | 'agent'
-export type ViewState = 'chat' | 'settings' | 'linkSummary'
+export type ViewState = 'chat' | 'settings'
 
 // Conversation type
 export interface Conversation {
@@ -63,22 +64,6 @@ interface AgentState {
   executionHistory: ActionResult[]
 }
 
-// Link summary state
-export interface LinkSummaryState {
-  url: string
-  title: string
-  summary: string
-  points: Array<{
-    summary: string
-    verbatimQuote: string
-    selectors?: string[]
-    contextBefore?: string
-    contextAfter?: string
-  }>
-  loading: boolean
-  error?: string
-}
-
 // App state
 interface AppState {
   // Multi-conversation
@@ -95,9 +80,6 @@ interface AppState {
   isResponding: boolean
   searchStatus: string | null
   currentEngine: SearchEngine
-  
-  // Link summary state
-  linkSummary: LinkSummaryState | null
 }
 
 // Initial agent state
@@ -137,7 +119,6 @@ const initialState: AppState = {
   isResponding: false,
   searchStatus: null,
   currentEngine: 'bing',
-  linkSummary: null,
 }
 
 // ============ Actions ============
@@ -152,9 +133,9 @@ type AppAction =
   | { type: 'UPDATE_CONVERSATION_TITLE'; payload: { id: string; title: string } }
   // Message actions (for active conversation)
   | { type: 'ADD_MESSAGE'; payload: Message }
-  | { type: 'UPDATE_MESSAGE'; payload: { id: string; content: string } }
+  | { type: 'UPDATE_MESSAGE'; payload: { id: string; content: string; githubItems?: GitHubRepoItem[] } }
   | { type: 'CLEAR_MESSAGES' }
-  | { type: 'FINISH_RESPONSE'; payload: string }
+  | { type: 'FINISH_RESPONSE'; payload: string | { content: string; githubItems?: GitHubRepoItem[] } }
   // UI actions
   | { type: 'SET_SIDEBAR_OPEN'; payload: boolean }
   | { type: 'SET_THEME'; payload: Theme }
@@ -180,10 +161,6 @@ type AppAction =
   | { type: 'CLEAR_CONTEXT_REFS' }
   | { type: 'SET_CONTEXT_RESOLVING'; payload: { id: string; resolving: boolean } }
   | { type: 'SET_RESOLVED_CONTENT'; payload: { id: string; content: string } }
-  // Link summary actions
-  | { type: 'SET_LINK_SUMMARY'; payload: LinkSummaryState }
-  | { type: 'CLEAR_LINK_SUMMARY' }
-  | { type: 'UPDATE_LINK_SUMMARY'; payload: Partial<LinkSummaryState> }
   // Hydration
   | { type: 'HYDRATE'; payload: Partial<AppState> }
 
@@ -285,7 +262,9 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return updateActiveConversation(state, conv => ({
         ...conv,
         messages: conv.messages.map(msg =>
-          msg.id === action.payload.id ? { ...msg, content: action.payload.content } : msg
+          msg.id === action.payload.id
+            ? { ...msg, content: action.payload.content, ...(action.payload.githubItems != null && { githubItems: action.payload.githubItems }) }
+            : msg
         ),
       }))
     
@@ -296,18 +275,24 @@ function appReducer(state: AppState, action: AppAction): AppState {
         title: 'New Conversation',
       }))
     
-    case 'FINISH_RESPONSE':
+    case 'FINISH_RESPONSE': {
+      const payload = action.payload
+      const content = typeof payload === 'string' ? payload : payload.content
+      const githubItems = typeof payload === 'object' ? payload.githubItems : undefined
       return {
         ...updateActiveConversation(state, conv => ({
           ...conv,
           messages: conv.messages.map(msg =>
-            msg.isStreaming ? { ...msg, content: action.payload, isStreaming: false } : msg
+            msg.isStreaming
+              ? { ...msg, content, ...(githubItems != null && { githubItems }), isStreaming: false }
+              : msg
           ),
         })),
         status: 'idle',
         isResponding: false,
         searchStatus: null,
       }
+    }
     
     // UI actions
     case 'SET_SIDEBAR_OPEN':
@@ -464,19 +449,6 @@ function appReducer(state: AppState, action: AppAction): AppState {
         },
       }))
     
-    // Link summary actions
-    case 'SET_LINK_SUMMARY':
-      return { ...state, linkSummary: action.payload, view: 'linkSummary' }
-    
-    case 'CLEAR_LINK_SUMMARY':
-      return { ...state, linkSummary: null, view: 'chat' }
-    
-    case 'UPDATE_LINK_SUMMARY':
-      return {
-        ...state,
-        linkSummary: state.linkSummary ? { ...state.linkSummary, ...action.payload } : null,
-      }
-    
     case 'HYDRATE':
       return { ...state, ...action.payload }
     
@@ -518,7 +490,7 @@ interface ChatContextType {
   // Chat methods
   setEngine: (engine: SearchEngine) => void
   startResponse: () => string
-  finishResponse: (content: string) => void
+  finishResponse: (content: string, githubItems?: GitHubRepoItem[]) => void
   setSearchResults: (messageId: string, results: SearchResult[]) => void
   
   // Agent methods
@@ -685,8 +657,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return id
   }, [addMessage])
 
-  const finishResponse = useCallback((content: string) => {
-    dispatch({ type: 'FINISH_RESPONSE', payload: content })
+  const finishResponse = useCallback((content: string, githubItems?: GitHubRepoItem[]) => {
+    dispatch({
+      type: 'FINISH_RESPONSE',
+      payload: githubItems != null ? { content, githubItems } : content,
+    })
     currentAssistantId.current = null
   }, [])
 

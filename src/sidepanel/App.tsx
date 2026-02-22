@@ -3,14 +3,13 @@
  * Cursor-style browser agent with Chat/Agent modes
  */
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { ChatProvider, useChatContext } from './context/ChatContext'
 import { Sidebar } from './components/layout/Sidebar'
 import { MessageList } from './components/MessageList'
 import { Composer } from './components/composer'
 import { SettingsPanel } from './components/SettingsPanel'
 import { ActionPlan } from './components/ActionPlan'
-import { LinkSummaryPanel } from './components/LinkSummaryPanel'
 import { AnimatePresence, motion } from 'framer-motion'
 
 function MainContent() {
@@ -24,47 +23,8 @@ function MainContent() {
     skipAction,
     cancelPlan,
     highlightAction,
-    dispatch,
   } = useChatContext()
-  const { view, isResponding, sidebarOpen, linkSummary } = state
-
-  // Listen for messages from background
-  useEffect(() => {
-    const listener = (message: any) => {
-      if (message.action === 'showLinkSummaryInSidepanel') {
-        console.log('[App] Received showLinkSummaryInSidepanel:', message)
-        // Initialize link summary state
-        dispatch({
-          type: 'SET_LINK_SUMMARY',
-          payload: {
-            url: message.linkUrl,
-            title: message.linkText,
-            summary: '',
-            points: [],
-            loading: true,
-          },
-        })
-        // Fetch and summarize
-        fetchAndSummarize(message.linkUrl, dispatch)
-      }
-    }
-    chrome.runtime.onMessage.addListener(listener)
-    return () => chrome.runtime.onMessage.removeListener(listener)
-  }, [dispatch])
-
-  // Show link summary panel
-  if (view === 'linkSummary' && linkSummary) {
-    return (
-      <motion.div
-        className="flex-1 flex flex-col h-full bg-[var(--bg-primary)]"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      >
-        <LinkSummaryPanel linkSummary={linkSummary} />
-      </motion.div>
-    )
-  }
+  const { view, isResponding, sidebarOpen } = state
 
   // Show settings panel
   if (view === 'settings') {
@@ -331,57 +291,6 @@ function AppContent() {
       <MainContent />
     </div>
   )
-}
-
-// Helper function to fetch and summarize link content
-async function fetchAndSummarize(url: string, dispatch: any) {
-  try {
-    // Fetch page content
-    const response = await chrome.runtime.sendMessage({
-      action: 'fetchLinkContent',
-      url,
-    })
-
-    if (!response.success) {
-      throw new Error(response.error || '获取页面内容失败')
-    }
-
-    const pageContent = response.data
-
-    // Summarize content
-    const summaryResponse = await chrome.runtime.sendMessage({
-      action: 'summarizeContentWithPoints',
-      title: pageContent.title,
-      url: pageContent.url,
-      content: pageContent.content,
-    })
-
-    if (!summaryResponse.success) {
-      throw new Error(summaryResponse.error || '生成总结失败')
-    }
-
-    const result = summaryResponse.result
-
-    // Update state with summary
-    dispatch({
-      type: 'UPDATE_LINK_SUMMARY',
-      payload: {
-        title: pageContent.title,
-        summary: result.summary,
-        points: result.points || [],
-        loading: false,
-      },
-    })
-  } catch (error) {
-    console.error('[App] Failed to fetch and summarize:', error)
-    dispatch({
-      type: 'UPDATE_LINK_SUMMARY',
-      payload: {
-        loading: false,
-        error: error instanceof Error ? error.message : '未知错误',
-      },
-    })
-  }
 }
 
 export default function App() {

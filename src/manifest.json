@@ -15,9 +15,7 @@
     "sidePanel",
     "tabs",
     "bookmarks",
-    "history",
-    "contextMenus",
-    "notifications"
+    "history"
   ],
   "host_permissions": [
     "https://www.google.com/*",
@@ -38,8 +36,7 @@
     {
       "matches": ["<all_urls>"],
       "js": ["src/content/index.ts"],
-      "run_at": "document_end",
-      "all_frames": false
+      "run_at": "document_end"
     }
   ],
   "action": {

@@ -13,17 +13,6 @@ export default defineConfig({
       input: {
         sidepanel: 'src/sidepanel/index.html',
       },
-      output: {
-        // Remove hash from content script filename for dynamic injection
-        entryFileNames: (chunkInfo) => {
-          if (chunkInfo.facadeModuleId && chunkInfo.facadeModuleId.includes('src/content/index.ts')) {
-            return 'assets/content.js'
-          }
-          return 'assets/[name]-[hash].js'
-        },
-        chunkFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash][extname]',
-      },
     },
   },
   server: {

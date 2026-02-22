@@ -83,3 +83,20 @@ export const CONDENSE_QUESTION_PROMPT = `根据以下对话历史和用户的追
 export const FOLLOW_UP_INDICATORS = /^(它|那个|这个|他|她|他的|她的|它的|怎么样|呢|还有吗|然后呢?|多少钱)$|^(它|那个|这个|他|她)(呢|的)?/
 export const CONDENSE_MAX_HISTORY_TURNS = 5
 export const CONDENSE_FOLLOW_UP_MAX_LEN = 15
+
+// GitHub 找项目（类 Copilot）：LLM 生成搜索串 + GitHub Search API
+export const GITHUB_SEARCH_QUERY_PROMPT = `你是 GitHub 仓库搜索助手。根据用户的自然语言需求，输出一条可直接用于 GitHub search/repositories 的搜索串。
+
+规则：
+1. 仅输出搜索串，不要解释、不要换行。搜索串可包含关键词和 qualifiers。
+2. 支持的 qualifiers 示例：language:python、stars:>100、pushed:>2024-01-01、topic:llm、fork:false。用空格连接。
+3. 关键词用英文或保留用户原文；若用户说中文，可保留核心词或译为英文以扩大结果。
+4. 长度控制在 80 字符内。
+
+示例：
+用户：想找 Python 的异步 Web 框架 → python async web framework
+用户：最近很火的 LLM 推理项目 → llm reasoning stars:>500
+用户：Chrome 扩展 智能补全 → chrome extension autocomplete
+用户：本地部署大模型 API → local llm api server`
+export const GITHUB_SEARCH_MAX_REPOS = 10
+export const GITHUB_API_PER_PAGE = 15

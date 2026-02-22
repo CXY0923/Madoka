@@ -1,11 +1,11 @@
 /**
  * Message Component
- * Single message with Markdown rendering and search results
+ * Single message with Markdown rendering, search results, and GitHub repo cards
  */
 
 import { motion } from 'framer-motion'
 import { marked } from 'marked'
-import type { Message as MessageType } from '../../shared/types'
+import type { Message as MessageType, GitHubRepoItem } from '../../shared/types'
 import { variants } from '../styles/animations'
 
 interface MessageProps {
@@ -13,7 +13,7 @@ interface MessageProps {
 }
 
 export function Message({ message }: MessageProps) {
-  const { role, content, searchResults, isStreaming } = message
+  const { role, content, searchResults, githubItems, isStreaming } = message
 
   const isUser = role === 'user'
   const isSystem = role === 'system'
@@ -71,6 +71,36 @@ export function Message({ message }: MessageProps) {
               </a>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* GitHub 找项目卡片 */}
+      {githubItems && githubItems.length > 0 && (
+        <div className="w-full max-w-[95%] flex flex-col gap-2">
+          {githubItems.map((repo: GitHubRepoItem, index: number) => (
+            <a
+              key={repo.html_url || index}
+              href={repo.html_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block bg-[var(--bg-tertiary)] rounded-xl p-3 border border-[var(--border-primary)] hover:border-[var(--accent-primary)] transition-colors text-left"
+            >
+              <div className="font-medium text-[var(--text-primary)] truncate">{repo.full_name}</div>
+              {repo.description ? (
+                <div className="text-xs text-[var(--text-secondary)] mt-1 line-clamp-2">{repo.description}</div>
+              ) : null}
+              <div className="flex items-center gap-3 mt-2 text-xs text-[var(--text-muted)]">
+                <span className="flex items-center gap-0.5">
+                  <span>★</span>
+                  <span>{repo.stargazers_count}</span>
+                </span>
+                {repo.language ? <span>{repo.language}</span> : null}
+                {repo.updated_at ? (
+                  <span>更新于 {new Date(repo.updated_at).toLocaleDateString()}</span>
+                ) : null}
+              </div>
+            </a>
+          ))}
         </div>
       )}
 
