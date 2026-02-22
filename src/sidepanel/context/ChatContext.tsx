@@ -961,6 +961,67 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             content: `❌ ${message.message}`,
           })
           break
+
+        case 'showLinkSummaryInSidepanel': {
+          const linkUrl = message.linkUrl
+          if (!linkUrl) break
+
+          dispatch({
+            type: 'SET_LINK_SUMMARY',
+            payload: {
+              url: linkUrl,
+              summary: '',
+              points: [],
+              loading: true,
+              error: null,
+            },
+          })
+
+          ;(async () => {
+            try {
+              const fetchRes = await sendToBackground<{ success: boolean; data?: { title: string; url: string; content: string; length: number }; error?: string }>({
+                action: 'fetchLinkContent',
+                url: linkUrl,
+              })
+              if (!fetchRes.success || !fetchRes.data?.content) {
+                throw new Error(fetchRes.error || '无法获取页面内容')
+              }
+
+              const summaryRes = await sendToBackground<{ success: boolean; result?: { summary: string; points: LinkSummaryPoint[] }; error?: string }>({
+                action: 'summarizeContentWithPoints',
+                title: fetchRes.data.title,
+                url: fetchRes.data.url,
+                content: fetchRes.data.content,
+              })
+              if (!summaryRes.success || !summaryRes.result) {
+                throw new Error(summaryRes.error || '生成总结失败')
+              }
+
+              dispatch({
+                type: 'SET_LINK_SUMMARY',
+                payload: {
+                  url: linkUrl,
+                  summary: summaryRes.result.summary,
+                  points: summaryRes.result.points || [],
+                  loading: false,
+                  error: null,
+                },
+              })
+            } catch (e) {
+              dispatch({
+                type: 'SET_LINK_SUMMARY',
+                payload: {
+                  url: linkUrl,
+                  summary: '',
+                  points: [],
+                  loading: false,
+                  error: (e as Error).message,
+                },
+              })
+            }
+          })()
+          break
+        }
       }
     })
 

@@ -10,6 +10,7 @@ import { MessageList } from './components/MessageList'
 import { Composer } from './components/composer'
 import { SettingsPanel } from './components/SettingsPanel'
 import { ActionPlan } from './components/ActionPlan'
+import { LinkSummaryPanel } from './components/LinkSummaryPanel'
 import { AnimatePresence, motion } from 'framer-motion'
 
 function MainContent() {
@@ -24,7 +25,21 @@ function MainContent() {
     cancelPlan,
     highlightAction,
   } = useChatContext()
-  const { view, isResponding, sidebarOpen } = state
+  const { view, isResponding, sidebarOpen, linkSummary } = state
+
+  // Show link summary panel
+  if (view === 'linkSummary' && linkSummary) {
+    return (
+      <motion.div
+        className="flex-1 flex flex-col h-full bg-[var(--bg-primary)]"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        <LinkSummaryPanel linkSummary={linkSummary} />
+      </motion.div>
+    )
+  }
 
   // Show settings panel
   if (view === 'settings') {

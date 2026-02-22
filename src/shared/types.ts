@@ -154,9 +154,16 @@ export interface ErrorMessage {
   message: string
 }
 
+export interface ShowLinkSummaryInSidepanelMessage {
+  action: 'showLinkSummaryInSidepanel'
+  linkUrl: string
+  linkText?: string
+}
+
 export type BackgroundMessage =
   | StreamChunkMessage
   | StreamEndMessage
   | SearchResultsMessage
   | StatusMessage
   | ErrorMessage
+  | ShowLinkSummaryInSidepanelMessage
