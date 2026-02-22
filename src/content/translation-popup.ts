@@ -540,10 +540,10 @@ export class TranslationPopup {
           }
 
           if (response?.success) {
-            askAiTextEl.textContent = '已发送!'
+            askAiTextEl.textContent = '已保存，请点击扩展图标打开侧边栏'
             setTimeout(() => {
               askAiTextEl.textContent = '问 AI'
-            }, 2000)
+            }, 3000)
           } else {
             askAiTextEl.textContent = '发送失败'
             setTimeout(() => {

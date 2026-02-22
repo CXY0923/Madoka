@@ -3,7 +3,7 @@
  * 显示链接总结的侧边栏面板
  */
 
-import { useChatContext, type LinkSummaryState } from '../context/ChatContext'
+import { useChatContext, type LinkSummaryState, type LinkSummaryPoint } from '../context/ChatContext'
 
 interface LinkSummaryPanelProps {
   linkSummary: LinkSummaryState
@@ -104,7 +104,7 @@ export function LinkSummaryPanel({ linkSummary }: LinkSummaryPanelProps) {
         {linkSummary.points.length > 0 && (
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-[var(--text-primary)]">📌 关键要点</h3>
-            {linkSummary.points.map((point, index) => (
+            {linkSummary.points.map((point: LinkSummaryPoint, index: number) => (
               <div
                 key={index}
                 className="p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] hover:border-[var(--accent-primary)]/50 transition-colors"

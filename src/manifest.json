@@ -15,7 +15,9 @@
     "sidePanel",
     "tabs",
     "bookmarks",
-    "history"
+    "history",
+    "contextMenus",
+    "notifications"
   ],
   "host_permissions": [
     "https://www.google.com/*",

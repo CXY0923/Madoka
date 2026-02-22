@@ -37,7 +37,24 @@ import { initializeTheme, setTheme as setDocTheme } from '../styles/theme'
 // ============ Types ============
 
 export type AppMode = 'chat' | 'agent'
-export type ViewState = 'chat' | 'settings'
+export type ViewState = 'chat' | 'settings' | 'linkSummary'
+
+// Link Summary State
+export interface LinkSummaryPoint {
+  summary: string
+  verbatimQuote?: string
+  selectors?: string[]
+  contextBefore?: string
+  contextAfter?: string
+}
+
+export interface LinkSummaryState {
+  url: string
+  summary: string
+  points: LinkSummaryPoint[]
+  loading: boolean
+  error: string | null
+}
 
 // Conversation type
 export interface Conversation {
@@ -69,17 +86,20 @@ interface AppState {
   // Multi-conversation
   conversations: Conversation[]
   activeConversationId: string | null
-  
+
   // UI state
   sidebarOpen: boolean
   theme: Theme
   view: ViewState
-  
+
   // Chat state
   status: ChatStatus
   isResponding: boolean
   searchStatus: string | null
   currentEngine: SearchEngine
+
+  // Link Summary state
+  linkSummary: LinkSummaryState | null
 }
 
 // Initial agent state
@@ -119,6 +139,7 @@ const initialState: AppState = {
   isResponding: false,
   searchStatus: null,
   currentEngine: 'bing',
+  linkSummary: null,
 }
 
 // ============ Actions ============
@@ -161,6 +182,9 @@ type AppAction =
   | { type: 'CLEAR_CONTEXT_REFS' }
   | { type: 'SET_CONTEXT_RESOLVING'; payload: { id: string; resolving: boolean } }
   | { type: 'SET_RESOLVED_CONTENT'; payload: { id: string; content: string } }
+  // Link Summary actions
+  | { type: 'SET_LINK_SUMMARY'; payload: LinkSummaryState }
+  | { type: 'CLEAR_LINK_SUMMARY' }
   // Hydration
   | { type: 'HYDRATE'; payload: Partial<AppState> }
 
@@ -448,10 +472,25 @@ function appReducer(state: AppState, action: AppAction): AppState {
           resolvingIds: conv.attachedContext.resolvingIds.filter(id => id !== action.payload.id),
         },
       }))
-    
+
+    // Link Summary actions
+    case 'SET_LINK_SUMMARY':
+      return {
+        ...state,
+        linkSummary: action.payload,
+        view: 'linkSummary',
+      }
+
+    case 'CLEAR_LINK_SUMMARY':
+      return {
+        ...state,
+        linkSummary: null,
+        view: 'chat',
+      }
+
     case 'HYDRATE':
       return { ...state, ...action.payload }
-    
+
     default:
       return state
   }
